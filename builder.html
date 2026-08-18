@@ -175,6 +175,8 @@
   .table-add-row:hover{background:var(--amber);}
 
   .b-embed{position:relative;padding:50px 40px;}
+  .split-media .b-embed{padding:0;}
+  .split-media .b-embed .embed-editor{max-width:none;}
   .embed-editor{max-width:520px;margin:0 auto;text-align:center;}
   .embed-hint{font-size:13px;color:#777;margin:0 0 14px;line-height:1.5;}
   .embed-input{width:100%;padding:12px;border:1px solid #ddd;font-family:var(--mono);font-size:12px;resize:vertical;margin-bottom:12px;box-sizing:border-box;}
@@ -195,6 +197,21 @@
     .b-gallery{padding:44px 24px;}
     .b-gallery .grid{grid-template-columns:1fr;gap:10px;}
   }
+
+  .b-photo-cards{padding:70px 40px;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:30px;}
+  .b-photo-cards .pc-card{position:relative;}
+  .b-photo-cards .pc-card .image-slot{aspect-ratio:4/3;margin-bottom:16px;}
+  .b-photo-cards .pc-card h3{font-size:18px;margin:0 0 6px;}
+  .b-photo-cards .pc-card p{font-size:14px;color:#666;line-height:1.5;margin:0;}
+  @media (max-width:640px){
+    .b-photo-cards{padding:44px 24px;gap:24px;}
+  }
+  .pc-remove-btn{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border:1px solid var(--ink);background:#fff;color:#999;font-size:13px;line-height:1;cursor:pointer;border-radius:50%;visibility:hidden;opacity:0;transition:opacity .15s;z-index:10;}
+  .block-wrapper:hover .pc-remove-btn{visibility:visible;opacity:1;}
+  .pc-remove-btn:hover{color:#c0392b;border-color:#c0392b;}
+  .pc-add-btn{grid-column:1/-1;margin-top:6px;border:1px dashed var(--amber);background:transparent;color:var(--ink);font-family:var(--mono);font-size:11px;padding:10px 14px;cursor:pointer;visibility:hidden;opacity:0;transition:opacity .15s;}
+  .block-wrapper:hover .pc-add-btn{visibility:visible;opacity:1;}
+  .pc-add-btn:hover{background:var(--amber);}
 
   .image-slot{position:relative;cursor:pointer;aspect-ratio:4/3;
     background:repeating-linear-gradient(45deg,#eee 0 10px,#f6f6f6 10px 20px);
@@ -223,23 +240,51 @@
   .b-photo-hero .ph-content p{font-size:16px;margin:0 0 26px;opacity:.92;line-height:1.5;}
   .b-photo-hero .cta{display:inline-block;background:var(--amber);color:var(--ink);padding:13px 28px;font-weight:700;text-decoration:none;font-size:14px;}
 
-  .b-carousel{position:relative;overflow:hidden;}
+  .b-carousel{position:relative;overflow:hidden;max-width:640px;margin:0 auto;}
   .carousel-track{display:flex;transition:transform .4s ease;}
   .carousel-slide{flex:0 0 100%;min-width:0;}
   .carousel-slide .image-slot{aspect-ratio:16/9;}
-  .carousel-prev,.carousel-next{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:40px;border:none;background:rgba(255,255,255,0.85);cursor:pointer;font-size:20px;line-height:1;border-radius:50%;z-index:5;color:var(--ink);}
+  .carousel-prev,.carousel-next{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border:none;background:rgba(255,255,255,0.85);cursor:pointer;font-size:17px;line-height:1;border-radius:50%;z-index:5;color:var(--ink);}
   .carousel-prev:hover,.carousel-next:hover{background:var(--amber);}
-  .carousel-prev{left:16px;}
-  .carousel-next{right:16px;}
-  .carousel-dots{position:absolute;bottom:16px;left:0;right:0;display:flex;justify-content:center;gap:8px;z-index:5;}
-  .carousel-dots .dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,0.55);cursor:pointer;}
+  .carousel-prev{left:12px;}
+  .carousel-next{right:12px;}
+  .carousel-dots{position:absolute;bottom:12px;left:0;right:0;display:flex;justify-content:center;gap:6px;z-index:5;}
+  .carousel-dots .dot{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.55);cursor:pointer;}
   .carousel-dots .dot.active{background:#fff;}
+
+  .b-gallery-carousel{padding:70px 40px;}
+  .gc-stage{position:relative;}
+  .gc-viewport{overflow:hidden;}
+  .gc-track{display:flex;gap:14px;transition:transform .4s ease;}
+  .gc-slide{position:relative;flex:0 0 calc((100% - 28px)/3);min-width:0;}
+  .gc-slide .image-slot{aspect-ratio:4/3;}
+  @media (max-width:900px){
+    .gc-slide{flex-basis:calc((100% - 14px)/2);}
+  }
+  @media (max-width:640px){
+    .gc-slide{flex-basis:100%;}
+  }
+  .gc-remove-btn{position:absolute;top:6px;right:6px;width:22px;height:22px;border:1px solid var(--ink);background:rgba(255,255,255,0.9);color:#999;font-size:13px;line-height:1;cursor:pointer;border-radius:50%;visibility:hidden;opacity:0;transition:opacity .15s;z-index:6;}
+  .block-wrapper:hover .gc-remove-btn{visibility:visible;opacity:1;}
+  .gc-remove-btn:hover{color:#c0392b;border-color:#c0392b;}
+  .gc-prev,.gc-next{position:absolute;top:50%;transform:translateY(-50%);width:34px;height:34px;border:none;background:rgba(255,255,255,0.85);cursor:pointer;font-size:17px;line-height:1;border-radius:50%;z-index:5;color:var(--ink);}
+  .gc-prev:hover,.gc-next:hover{background:var(--amber);}
+  .gc-prev{left:8px;}
+  .gc-next{right:8px;}
+  .gc-add-btn{display:block;margin:16px auto 0;border:1px dashed var(--amber);background:transparent;color:var(--ink);font-family:var(--mono);font-size:11px;padding:10px 16px;cursor:pointer;visibility:hidden;opacity:0;transition:opacity .15s;}
+  .block-wrapper:hover .gc-add-btn{visibility:visible;opacity:1;}
+  .gc-add-btn:hover{background:var(--amber);}
 
   .b-testimonial{padding:80px 40px;text-align:center;background:var(--ink);color:#fff;}
   .b-testimonial p{font-size:22px;max-width:640px;margin:0 auto 20px;font-style:italic;line-height:1.5;}
   .b-testimonial .who{font-family:var(--mono);font-size:12px;color:var(--amber);letter-spacing:.05em;}
 
-  .b-cta{padding:70px 40px;text-align:center;background:var(--amber);}
+  .b-cta{position:relative;overflow:hidden;padding:70px 40px;text-align:center;background:var(--amber);}
+  .b-cta .cta-photo-slot{position:absolute;inset:0;background:transparent;}
+  .b-cta .cta-overlay{position:absolute;inset:0;background:rgba(10,12,25,0.4);pointer-events:none;opacity:0;transition:opacity .2s;}
+  .b-cta .cta-photo-slot.has-image + .cta-overlay{opacity:1;}
+  .b-cta .cta-content{position:relative;z-index:2;}
+  .b-cta .cta-photo-slot.has-image ~ .cta-content{color:#fff;}
   .b-cta h2{font-size:30px;margin:0 0 20px;}
   .b-cta .cta{display:inline-block;background:var(--ink);color:#fff;padding:14px 30px;text-decoration:none;font-weight:700;}
 
@@ -389,6 +434,41 @@ const BLOCKS = [
       </div>
     </div>`},
 
+  { id:'photo-cards', code:'PC-18 · PHOTO CARDS', label:'Photo cards', html:`
+    <div class="b-photo-cards">
+      <div class="pc-card">
+        <div class="image-slot"><span class="upload-hint">+ Add photo</span></div>
+        <h3 contenteditable="true">Anna Petrova</h3>
+        <p contenteditable="true">Senior hairstylist</p>
+      </div>
+      <div class="pc-card">
+        <div class="image-slot"><span class="upload-hint">+ Add photo</span></div>
+        <h3 contenteditable="true">Maria Ozola</h3>
+        <p contenteditable="true">Nail technician</p>
+      </div>
+      <div class="pc-card">
+        <div class="image-slot"><span class="upload-hint">+ Add photo</span></div>
+        <h3 contenteditable="true">Elena Kalnina</h3>
+        <p contenteditable="true">Beauty therapist</p>
+      </div>
+    </div>`},
+
+  { id:'gallery-carousel', code:'GC-19 · GALLERY CAROUSEL', label:'Gallery carousel', html:`
+    <div class="b-gallery-carousel">
+      <div class="gc-stage">
+        <div class="gc-viewport">
+          <div class="gc-track">
+            <div class="gc-slide"><div class="image-slot"><span class="upload-hint">+ Photo</span></div></div>
+            <div class="gc-slide"><div class="image-slot"><span class="upload-hint">+ Photo</span></div></div>
+            <div class="gc-slide"><div class="image-slot"><span class="upload-hint">+ Photo</span></div></div>
+          </div>
+        </div>
+        <button type="button" class="gc-prev" onclick="galleryCarouselMove(this,-1)">‹</button>
+        <button type="button" class="gc-next" onclick="galleryCarouselMove(this,1)">›</button>
+      </div>
+      <button type="button" class="gc-add-btn" data-editor-only="1">+ Add photo</button>
+    </div>`},
+
   { id:'testimonial', code:'T-05 · TESTIMONIAL', label:'Client quote', html:`
     <div class="b-testimonial">
       <p contenteditable="true">"First time I found a salon that truly listens to what you need. The result exceeded expectations."</p>
@@ -397,8 +477,12 @@ const BLOCKS = [
 
   { id:'cta', code:'C-06 · CTA', label:'CTA banner', html:`
     <div class="b-cta">
-      <h2 contenteditable="true">Ready for a change?</h2>
-      <a class="cta" contenteditable="true">Book a consultation</a>
+      <div class="image-slot cta-photo-slot"><span class="upload-hint">+ Add background photo</span></div>
+      <div class="cta-overlay"></div>
+      <div class="cta-content">
+        <h2 contenteditable="true">Ready for a change?</h2>
+        <a class="cta" contenteditable="true">Book a consultation</a>
+      </div>
     </div>`},
 
   { id:'contact', code:'C-07 · FORM', label:'Contact form', html:`
@@ -408,12 +492,6 @@ const BLOCKS = [
       <input placeholder="Phone">
       <textarea rows="4" placeholder="Message"></textarea>
       <button contenteditable="true">Send request</button>
-    </div>`},
-
-  { id:'footer', code:'F-08 · FOOTER', label:'Site footer', html:`
-    <div class="b-footer">
-      <div contenteditable="true">© 2026 Bloom Studio. All rights reserved.</div>
-      <div><a contenteditable="true">Instagram</a><a contenteditable="true">WhatsApp</a><a contenteditable="true">Directions</a></div>
     </div>`},
 
   { id:'divider', code:'D-09 · DIVIDER', label:'Divider', html:`
@@ -442,6 +520,25 @@ const BLOCKS = [
       </div>
     </div>`},
 
+  { id:'address-map', code:'AM-20 · ADDRESS + MAP', label:'Address + Map', html:`
+    <div class="b-split">
+      <div class="split-text">
+        <h2 contenteditable="true">Visit us</h2>
+        <p contenteditable="true">123 Example Street<br>Riga, Latvia<br>+371 20 000 000<br>hello@example.com</p>
+      </div>
+      <div class="split-media">
+        <div class="b-embed b-embed-map">
+          <div class="embed-editor" data-editor-only="1">
+            <p class="embed-hint">Paste a Google Maps embed code (Share → Embed a map) or a link.</p>
+            <textarea class="embed-input" rows="4" placeholder="https://... or &lt;iframe ...&gt;&lt;/iframe&gt;"></textarea>
+            <button type="button" class="embed-apply">Insert</button>
+          </div>
+          <div class="embed-output" style="display:none;"></div>
+          <button type="button" class="embed-edit-btn" data-editor-only="1" title="Edit embed">✎</button>
+        </div>
+      </div>
+    </div>`},
+
   { id:'photo-hero', code:'PH-13 · PHOTO WITH TEXT', label:'Photo with text (overlay)', html:`
     <div class="b-photo-hero">
       <div class="image-slot photo-bg"><span class="upload-hint">+ Add photo</span></div>
@@ -467,6 +564,12 @@ const BLOCKS = [
         <span class="dot" onclick="carouselGoTo(this,1)"></span>
         <span class="dot" onclick="carouselGoTo(this,2)"></span>
       </div>
+    </div>`},
+
+  { id:'footer', code:'F-08 · FOOTER', label:'Site footer', html:`
+    <div class="b-footer">
+      <div contenteditable="true">© 2026 Bloom Studio. All rights reserved.</div>
+      <div><a contenteditable="true">Instagram</a><a contenteditable="true">WhatsApp</a><a contenteditable="true">Directions</a></div>
     </div>`},
 ];
 
@@ -570,6 +673,24 @@ function carouselGoTo(el, idx){
   car.querySelectorAll('.dot').forEach((d,i)=> d.classList.toggle('active', i===idx));
 }
 
+function galleryCarouselMove(btn, delta){
+  const car = btn.closest('.b-gallery-carousel');
+  const viewport = car.querySelector('.gc-viewport');
+  const track = car.querySelector('.gc-track');
+  const slides = track.querySelectorAll('.gc-slide');
+  if(!slides.length) return;
+  const firstRect = slides[0].getBoundingClientRect();
+  const trackStyle = getComputedStyle(track);
+  const gap = parseFloat(trackStyle.columnGap || trackStyle.gap) || 0;
+  const step = firstRect.width + gap;
+  let scrollPos = parseFloat(car.dataset.scroll || '0');
+  scrollPos += delta * step;
+  const maxScroll = Math.max(0, track.scrollWidth - viewport.clientWidth);
+  scrollPos = Math.min(maxScroll, Math.max(0, scrollPos));
+  car.dataset.scroll = scrollPos;
+  track.style.transform = 'translateX(-' + scrollPos + 'px)';
+}
+
 function wireImageSlots(root){
   root.querySelectorAll('.image-slot').forEach(slot=>{
     slot.addEventListener('click', e=>{
@@ -670,6 +791,93 @@ function wireEmbed(root){
       if(existingFrame) input.value = existingFrame.outerHTML;
     });
   });
+}
+
+function wireGalleryCarousel(root){
+  root.querySelectorAll('.b-gallery-carousel').forEach(car=>{
+    const track = car.querySelector('.gc-track');
+    const addBtn = car.querySelector('.gc-add-btn');
+    if(!track) return;
+
+    function wireSlide(slide){
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.className = 'gc-remove-btn';
+      removeBtn.setAttribute('data-editor-only','1');
+      removeBtn.textContent = '×';
+      removeBtn.title = 'Remove photo';
+      removeBtn.addEventListener('click', e=>{
+        e.stopPropagation();
+        slide.remove();
+      });
+      slide.appendChild(removeBtn);
+    }
+    track.querySelectorAll('.gc-slide').forEach(wireSlide);
+
+    if(addBtn){
+      addBtn.addEventListener('click', e=>{
+        e.stopPropagation();
+        const slide = document.createElement('div');
+        slide.className = 'gc-slide';
+        slide.innerHTML = `<div class="image-slot"><span class="upload-hint">+ Photo</span></div>`;
+        track.appendChild(slide);
+        wireImageSlots(slide);
+        wireSlide(slide);
+      });
+    }
+  });
+}
+
+function wirePhotoCards(root){
+  const grid = root.querySelector('.b-photo-cards');
+  if(!grid) return;
+
+  function updateLayout(){
+    const count = grid.querySelectorAll(':scope > .pc-card').length;
+    if(count === 1){
+      grid.style.gridTemplateColumns = 'minmax(0,340px)';
+      grid.style.justifyContent = 'center';
+    } else {
+      grid.style.gridTemplateColumns = '';
+      grid.style.justifyContent = '';
+    }
+  }
+
+  function wireCard(card){
+    const removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'pc-remove-btn';
+    removeBtn.setAttribute('data-editor-only','1');
+    removeBtn.textContent = '×';
+    removeBtn.title = 'Remove card';
+    removeBtn.addEventListener('click', e=>{
+      e.stopPropagation();
+      card.remove();
+      updateLayout();
+    });
+    card.appendChild(removeBtn);
+  }
+  grid.querySelectorAll('.pc-card').forEach(wireCard);
+  updateLayout();
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'pc-add-btn';
+  addBtn.setAttribute('data-editor-only','1');
+  addBtn.textContent = '+ Add card';
+  addBtn.addEventListener('click', e=>{
+    e.stopPropagation();
+    const card = document.createElement('div');
+    card.className = 'pc-card';
+    card.innerHTML = `<div class="image-slot"><span class="upload-hint">+ Add photo</span></div><h3 contenteditable="true">Name</h3><p contenteditable="true">Role</p>`;
+    grid.insertBefore(card, addBtn);
+    wireImageSlots(card);
+    card.querySelectorAll('h1,h2,h3').forEach(h=> h.style.fontFamily = currentHeadingFont);
+    wireCard(card);
+    updateLayout();
+    card.querySelector('h3').focus();
+  });
+  grid.appendChild(addBtn);
 }
 
 function wireTable(root){
@@ -857,6 +1065,8 @@ function makeWrapper(blockDef, savedHTML){
   wireImageSlots(content);
   wireHeaderMenu(content);
   wireTable(content);
+  wirePhotoCards(content);
+  wireGalleryCarousel(content);
   wireEmbed(content);
   content.querySelectorAll('h1,h2,h3').forEach(h=> h.style.fontFamily = currentHeadingFont);
 
@@ -1283,6 +1493,27 @@ function carouselGoTo(el, idx){
 }
 <\/script>` : '';
 
+  const galleryCarouselScript = flat.querySelector('.b-gallery-carousel') ? `
+<script>
+function galleryCarouselMove(btn, delta){
+  var car = btn.closest('.b-gallery-carousel');
+  var viewport = car.querySelector('.gc-viewport');
+  var track = car.querySelector('.gc-track');
+  var slides = track.querySelectorAll('.gc-slide');
+  if(!slides.length) return;
+  var firstRect = slides[0].getBoundingClientRect();
+  var trackStyle = getComputedStyle(track);
+  var gap = parseFloat(trackStyle.columnGap || trackStyle.gap) || 0;
+  var step = firstRect.width + gap;
+  var scrollPos = parseFloat(car.dataset.scroll || '0');
+  scrollPos += delta * step;
+  var maxScroll = Math.max(0, track.scrollWidth - viewport.clientWidth);
+  scrollPos = Math.min(maxScroll, Math.max(0, scrollPos));
+  car.dataset.scroll = scrollPos;
+  track.style.transform = 'translateX(-' + scrollPos + 'px)';
+}
+<\/script>` : '';
+
   const lightboxAssets = hasImages ? `
 <style>
 #lightbox-overlay{display:none;position:fixed;inset:0;background:rgba(10,12,25,0.9);z-index:9999;align-items:center;justify-content:center;padding:24px;}
@@ -1323,6 +1554,7 @@ ${styleTag}
 ${flat.innerHTML}
 </div>
 ${carouselScript}
+${galleryCarouselScript}
 ${lightboxAssets}
 </body>
 </html>`;
