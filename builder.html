@@ -61,10 +61,14 @@
   .part:active{cursor:grabbing;}
   .part .code{font-family:var(--mono);font-size:9px;color:var(--blue);letter-spacing:.08em;padding:6px 8px 0;display:block;}
   .part .label{font-family:var(--sans);font-size:13px;font-weight:600;padding:2px 8px 8px;display:block;color:var(--ink);}
-  .part .swatch{height:34px;margin:0 8px 8px;border:1px solid var(--line);background:
-      repeating-linear-gradient(45deg, #eceae3 0 6px, #f7f5f0 6px 12px);
-      display:flex;align-items:center;gap:4px;padding:0 6px;}
-  .part .swatch i{display:block;background:var(--blue);opacity:.55;}
+  .part .swatch{height:46px;margin:0 8px 8px;border:1px solid var(--line);background:#fff;
+      display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .part .swatch svg{width:100%;height:100%;display:block;}
+  .part .swatch .fill{fill:var(--blue);opacity:.5;}
+  .part .swatch .fill-strong{fill:var(--blue);opacity:.8;}
+  .part .swatch .fill-accent{fill:var(--amber);}
+  .part .swatch .photo{fill:var(--blue);opacity:.18;}
+  .part .swatch .stroke{stroke:var(--blue);opacity:.45;fill:none;stroke-width:1.5;}
 
   /* ---------- Canvas ---------- */
   #canvas-wrap{background:var(--paper);overflow-y:auto;position:relative;
@@ -313,9 +317,13 @@
         <span>px</span>
       </div>
       <div class="doc-bg-control">
-        <span>Page background</span>
-        <label class="color-btn" title="Document background color">
+        <span>Surround</span>
+        <label class="color-btn" title="Background around the page (outside the content container)">
           <input type="color" id="docBgPicker" value="#ffffff">
+        </label>
+        <span>Page</span>
+        <label class="color-btn" title="Background behind the blocks (inside the content container)">
+          <input type="color" id="pageBgPicker" value="#ffffff">
         </label>
       </div>
       <div class="font-control">
@@ -576,13 +584,57 @@ const BLOCKS = [
 const partsList = document.getElementById('partsList');
 const canvas = document.getElementById('canvas');
 
+// Mini layout diagrams for the sidebar — one per block, drawn on a 100x46 canvas
+const BLOCK_ICONS = {
+  header: `<rect class="fill-strong" x="6" y="18" width="22" height="6"/><rect class="fill" x="52" y="19" width="12" height="4"/><rect class="fill" x="68" y="19" width="12" height="4"/><rect class="fill-accent" x="84" y="17" width="12" height="8"/>`,
+
+  hero: `<rect class="fill-strong" x="24" y="8" width="52" height="8"/><rect class="fill" x="32" y="20" width="36" height="4"/><rect class="fill-accent" x="38" y="29" width="24" height="9"/>`,
+
+  features: `<rect class="stroke" x="6" y="8" width="26" height="30"/><rect class="stroke" x="37" y="8" width="26" height="30"/><rect class="stroke" x="68" y="8" width="26" height="30"/><rect class="fill" x="10" y="14" width="18" height="4"/><rect class="fill" x="41" y="14" width="18" height="4"/><rect class="fill" x="72" y="14" width="18" height="4"/><rect class="fill" x="10" y="22" width="14" height="3"/><rect class="fill" x="41" y="22" width="14" height="3"/><rect class="fill" x="72" y="22" width="14" height="3"/>`,
+
+  text: `<rect class="fill-strong" x="18" y="10" width="40" height="6"/><rect class="fill" x="18" y="21" width="64" height="3"/><rect class="fill" x="18" y="27" width="64" height="3"/><rect class="fill" x="18" y="33" width="44" height="3"/>`,
+
+  table: `<rect class="fill-strong" x="6" y="8" width="88" height="6"/><rect class="fill" x="6" y="18" width="26" height="3"/><rect class="fill" x="40" y="18" width="26" height="3"/><rect class="fill" x="74" y="18" width="20" height="3"/><rect class="fill" x="6" y="26" width="26" height="3"/><rect class="fill" x="40" y="26" width="26" height="3"/><rect class="fill" x="74" y="26" width="20" height="3"/><rect class="fill" x="6" y="34" width="26" height="3"/><rect class="fill" x="40" y="34" width="26" height="3"/><rect class="fill" x="74" y="34" width="20" height="3"/>`,
+
+  embed: `<rect class="stroke" x="16" y="8" width="68" height="30"/><path class="fill" d="M44 17 L58 23 L44 29 Z"/>`,
+
+  gallery: `<rect class="photo" x="6" y="12" width="27" height="22"/><rect class="photo" x="37" y="12" width="27" height="22"/><rect class="photo" x="68" y="12" width="27" height="22"/><circle class="fill" cx="14" cy="20" r="2.5"/><circle class="fill" cx="45" cy="20" r="2.5"/><circle class="fill" cx="76" cy="20" r="2.5"/>`,
+
+  'photo-cards': `<rect class="photo" x="6" y="6" width="26" height="18"/><rect class="fill" x="6" y="28" width="18" height="4"/><rect class="fill" x="6" y="35" width="12" height="3"/><rect class="photo" x="37" y="6" width="26" height="18"/><rect class="fill" x="37" y="28" width="18" height="4"/><rect class="fill" x="37" y="35" width="12" height="3"/><rect class="photo" x="68" y="6" width="26" height="18"/><rect class="fill" x="68" y="28" width="18" height="4"/><rect class="fill" x="68" y="35" width="12" height="3"/>`,
+
+  'gallery-carousel': `<rect class="photo" x="14" y="12" width="24" height="22"/><rect class="photo" x="42" y="12" width="24" height="22"/><rect class="photo" x="70" y="12" width="24" height="22"/><path class="stroke" d="M9 19 L5 23 L9 27"/><path class="stroke" d="M96 19 L100 23 L96 27" transform="translate(-4,0)"/>`,
+
+  testimonial: `<rect class="fill" x="18" y="12" width="64" height="4"/><rect class="fill" x="24" y="20" width="52" height="4"/><rect class="fill-accent" x="36" y="31" width="28" height="4"/>`,
+
+  cta: `<rect class="fill-strong" x="22" y="12" width="56" height="7"/><rect class="fill-accent" x="34" y="26" width="32" height="10"/>`,
+
+  contact: `<rect class="fill-strong" x="30" y="6" width="40" height="5"/><rect class="stroke" x="22" y="15" width="56" height="7"/><rect class="stroke" x="22" y="25" width="56" height="7"/><rect class="fill-accent" x="22" y="35" width="56" height="7"/>`,
+
+  divider: `<rect class="fill-strong" x="34" y="22" width="32" height="3"/>`,
+
+  image: `<rect class="photo" x="16" y="6" width="68" height="34"/><circle class="fill" cx="34" cy="18" r="4"/><path class="fill" d="M22 38 L42 22 L58 38 Z"/>`,
+
+  'text-photo': `<rect class="fill-strong" x="6" y="12" width="34" height="5"/><rect class="fill" x="6" y="21" width="40" height="3"/><rect class="fill" x="6" y="27" width="30" height="3"/><rect class="photo" x="54" y="8" width="40" height="30"/>`,
+
+  'photo-text': `<rect class="photo" x="6" y="8" width="40" height="30"/><rect class="fill-strong" x="54" y="12" width="34" height="5"/><rect class="fill" x="54" y="21" width="40" height="3"/><rect class="fill" x="54" y="27" width="30" height="3"/>`,
+
+  'address-map': `<rect class="fill-strong" x="6" y="12" width="26" height="5"/><rect class="fill" x="6" y="21" width="36" height="3"/><rect class="fill" x="6" y="27" width="30" height="3"/><rect class="stroke" x="54" y="8" width="40" height="30"/><path class="fill" d="M74 16 a5 5 0 0 1 5 5 c0 4 -5 9 -5 9 s-5 -5 -5 -9 a5 5 0 0 1 5 -5 z"/>`,
+
+  'photo-hero': `<rect class="photo" x="6" y="4" width="88" height="38"/><rect class="fill-strong" x="26" y="14" width="48" height="6"/><rect class="fill" x="34" y="24" width="32" height="3"/><rect class="fill-accent" x="40" y="32" width="20" height="6"/>`,
+
+  carousel: `<rect class="photo" x="22" y="8" width="56" height="30"/><path class="stroke" d="M16 18 L11 23 L16 28"/><path class="stroke" d="M84 18 L89 23 L84 28"/><circle class="fill" cx="44" cy="43" r="1.8"/><circle class="fill-accent" cx="50" cy="43" r="1.8"/><circle class="fill" cx="56" cy="43" r="1.8"/>`,
+
+  footer: `<rect class="fill" x="6" y="20" width="34" height="4"/><rect class="fill" x="60" y="20" width="10" height="4"/><rect class="fill" x="73" y="20" width="10" height="4"/><rect class="fill" x="86" y="20" width="8" height="4"/>`,
+};
+
 // Render sidebar parts
 BLOCKS.forEach(b=>{
   const el = document.createElement('div');
   el.className='part';
   el.draggable = true;
   el.dataset.blockId = b.id;
-  el.innerHTML = `<span class="code">${b.code}</span><span class="label">${b.label}</span><div class="swatch"><i style="width:30%;height:8px"></i><i style="width:15%;height:8px"></i><i style="width:20%;height:8px"></i></div>`;
+  const icon = BLOCK_ICONS[b.id] || '';
+  el.innerHTML = `<span class="code">${b.code}</span><span class="label">${b.label}</span><div class="swatch"><svg viewBox="0 0 100 46" xmlns="http://www.w3.org/2000/svg">${icon}</svg></div>`;
   el.addEventListener('dragstart', e=>{
     e.dataTransfer.setData('text/plain', JSON.stringify({type:'new', blockId:b.id}));
     e.dataTransfer.effectAllowed='copy';
@@ -1238,6 +1290,7 @@ document.getElementById('saveBtn').addEventListener('click', ()=>{
     version: 1,
     width: currentWidth,
     docBg: docBgColor,
+    pageBg: pageBgColor,
     fontKey: currentFontKey,
     blocks
   };
@@ -1281,8 +1334,13 @@ document.getElementById('loadBtn').addEventListener('click', ()=>{
       if(project.docBg){
         docBgColor = project.docBg;
         docBgPicker.value = docBgColor;
-        canvas.style.backgroundColor = docBgColor;
+        canvasWrap.style.backgroundColor = docBgColor;
+        canvasWrap.style.backgroundImage = 'none';
       }
+      // older projects only had a single background — fall back to it
+      pageBgColor = project.pageBg || project.docBg || '#ffffff';
+      pageBgPicker.value = pageBgColor;
+      canvas.style.backgroundColor = pageBgColor;
     };
     reader.readAsText(file);
   });
@@ -1427,12 +1485,21 @@ document.addEventListener('click', e=>{
 
 
 
-// ---------- Document / body background ----------
+// ---------- Backgrounds: surround (outside container) vs page (behind blocks) ----------
+const canvasWrap = document.getElementById('canvas-wrap');
 const docBgPicker = document.getElementById('docBgPicker');
-let docBgColor = '#ffffff';
+const pageBgPicker = document.getElementById('pageBgPicker');
+let docBgColor = '#ffffff';   // area around/outside the content container
+let pageBgColor = '#ffffff';  // area behind the blocks, inside the container
+
 docBgPicker.addEventListener('input', e=>{
   docBgColor = e.target.value;
-  canvas.style.backgroundColor = docBgColor;
+  canvasWrap.style.backgroundColor = docBgColor;
+  canvasWrap.style.backgroundImage = 'none';
+});
+pageBgPicker.addEventListener('input', e=>{
+  pageBgColor = e.target.value;
+  canvas.style.backgroundColor = pageBgColor;
 });
 
 
@@ -1550,7 +1617,7 @@ ${styleTag}
 <style>html,body{margin:0;padding:0;min-height:100%;}html{background-color:${docBgColor};}.image-slot{cursor:default;}${fontRules}</style>
 </head>
 <body style="background-color:${docBgColor};">
-<div class="page-content" style="${widthStyle}">
+<div class="page-content" style="${widthStyle}background-color:${pageBgColor};min-height:100vh;">
 ${flat.innerHTML}
 </div>
 ${carouselScript}
