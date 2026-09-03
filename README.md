@@ -4,7 +4,7 @@ A single self-contained HTML file — a visual, drag-and-drop page builder for q
 
 ## Basics
 
-- **Drag a block** from the left panel onto the canvas. Blocks already on the canvas can be dragged to reorder them too.
+- **Drag a block** from the left panel onto the canvas. Each block in the panel shows a small diagram of how its elements are laid out, so you can pick by structure rather than by name. Blocks already on the canvas can be dragged to reorder them too.
 - **Click any text** to edit it in place. A floating panel appears with color, size, and alignment controls. Click a button/link and the same panel adds background color, corner radius, and padding controls for that button.
 - **Hover a block** to reveal its toolbar (top-right): style presets, background color, border, shadow, outer margin, inner padding, reorder (↑↓), delete — plus a few controls that only appear on relevant blocks (photo lightbox toggle, sticky header).
 - **Click a photo slot** to upload your own image (stored as base64, so exported files are fully self-contained — no separate image files to keep track of).
@@ -31,7 +31,7 @@ A single self-contained HTML file — a visual, drag-and-drop page builder for q
 ## Page-level controls (top bar)
 
 - **Width** — desktop/tablet/phone presets or a custom px value (affects the content container's `max-width` for design purposes; real responsiveness at export is still driven by actual browser width via media queries, not this preset).
-- **Page background** — color for the whole document.
+- **Surround / Page backgrounds** — two separate colors: **Surround** fills the area outside the content container (the margins you see when the page is narrower than the screen), **Page** fills the area behind the blocks themselves. Set them to the same color for a single flat background, or different colors to make the content column stand out.
 - **Fonts** — a few heading+body font pairings (some load from Google Fonts, so the exported page needs internet to render them).
 
 ## Save / Load / Export
