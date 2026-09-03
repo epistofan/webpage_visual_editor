@@ -61,6 +61,10 @@
   }
   .field-block textarea{min-height:70px;resize:none;}
   .field-block .help{font-size:11.5px;color:#888;margin-top:4px;}
+  .cond-badge{font-size:10.5px;font-family:var(--mono);color:var(--blue);background:rgba(43,58,103,0.08);border:1px dashed var(--blue);padding:2px 6px;display:inline-block;margin-bottom:6px;border-radius:2px;}
+  .img-slot{border:2px dashed #bbb;background:#efece5;color:#888;font-size:12.5px;text-align:center;padding:26px 10px;border-radius:4px;cursor:pointer;}
+  .img-slot:hover{border-color:var(--amber);color:var(--ink);background:rgba(232,178,61,0.1);}
+  .img-preview{display:block;max-width:100%;height:auto;}
   .field-block .opt-row{font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:4px;}
   .field-block .opt-row input{pointer-events:none;}
   .field-block.type-heading .lbl{font-size:17px;border-bottom:1px solid var(--line);padding-bottom:6px;}
@@ -91,6 +95,7 @@
   #panel input[type=text], #panel input[type=number], #panel textarea, #panel select{
     width:100%;padding:7px 9px;border:1px solid rgba(247,245,240,0.3);background:rgba(247,245,240,0.08);color:var(--paper);border-radius:3px;font-size:12.5px;font-family:var(--sans);
   }
+  #panel select option{background:var(--ink);color:var(--paper);}
   #panel textarea{min-height:50px;resize:vertical;}
   #panel .row2{display:flex;gap:8px;}
   #panel .row2 > div{flex:1;}
@@ -101,6 +106,14 @@
   #panel .addopt{margin-top:4px;background:rgba(232,178,61,0.2);border:1px dashed var(--amber);color:var(--amber);padding:5px 10px;font-size:11.5px;cursor:pointer;width:100%;border-radius:3px;}
   #panel .addopt:hover{background:var(--amber);color:var(--ink);}
   #panel hr{border:none;border-top:1px solid rgba(247,245,240,0.15);margin:16px 0;}
+
+  #previewOverlay{display:none;position:fixed;inset:0;z-index:100;background:var(--ink);flex-direction:column;}
+  #previewOverlay.open{display:flex;}
+  #previewBar{height:52px;flex:0 0 52px;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:2px solid var(--amber);}
+  #previewBar span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:rgba(247,245,240,0.6);}
+  #previewBar button{background:var(--amber);border:none;color:var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;cursor:pointer;font-weight:700;}
+  #previewBar button:hover{background:var(--paper);}
+  #previewFrame{flex:1 1 auto;width:100%;border:none;background:#F4F2ED;}
 
   @media (max-width:900px){
     #app{grid-template-columns:0 1fr 0;}
@@ -113,6 +126,9 @@
   <div id="topbar">
     <h1>Form<span>Builder</span></h1>
     <div class="actions">
+      <button onclick="undo()" title="Ctrl+Z">↶ Undo</button>
+      <button onclick="redo()" title="Ctrl+Shift+Z">↷ Redo</button>
+      <button onclick="openPreview()">Preview</button>
       <button onclick="document.getElementById('fileInput').click()">Load</button>
       <input type="file" id="fileInput" accept=".json" onchange="loadProject(event)">
       <button onclick="saveProject()">Save</button>
@@ -141,6 +157,7 @@
     <div class="palette-item" draggable="true" data-type="file"><span class="ic">📎</span>File</div>
     <div class="palette-item" draggable="true" data-type="hidden"><span class="ic">⬚</span>Hidden field</div>
     <div class="palette-item" draggable="true" data-type="heading"><span class="ic">H</span>Section heading</div>
+    <div class="palette-item" draggable="true" data-type="image"><span class="ic">🖼</span>Image</div>
     <div class="palette-item" draggable="true" data-type="html"><span class="ic">▤</span>Text / HTML</div>
     <div class="palette-item" draggable="true" data-type="divider"><span class="ic">―</span>Divider</div>
     <div class="palette-item" draggable="true" data-type="submit"><span class="ic">➤</span>Submit button</div>
@@ -160,12 +177,62 @@
     <div class="ptitle">Field settings</div>
     <div id="panelBody"><div class="pempty">Select a field on the form to configure its label, name, required state, options, and validation.</div></div>
   </div>
+
+  <div id="previewOverlay">
+    <div id="previewBar">
+      <span>Preview — live form, not the editor</span>
+      <button onclick="closePreview()">✕ Close preview</button>
+    </div>
+    <iframe id="previewFrame"></iframe>
+  </div>
 </div>
 
 <script>
 let fields = [];
 let idCounter = 1;
 let selectedId = null;
+
+/* ---------- Undo / Redo ---------- */
+let undoStack = [];
+let redoStack = [];
+let historyLock = false;
+
+function snapshot(){
+  return JSON.stringify({
+    fields,
+    title: document.getElementById('formTitle').innerText,
+    desc: document.getElementById('formDesc').innerText
+  });
+}
+function pushHistory(){
+  if(historyLock) return;
+  const snap = snapshot();
+  if(undoStack.length && undoStack[undoStack.length-1] === snap) return;
+  undoStack.push(snap);
+  if(undoStack.length > 60) undoStack.shift();
+  redoStack = [];
+}
+function applySnapshot(snap){
+  const data = JSON.parse(snap);
+  fields = data.fields;
+  document.getElementById('formTitle').innerText = data.title;
+  document.getElementById('formDesc').innerText = data.desc;
+  if(!fields.some(f=>f.id===selectedId)) selectedId = null;
+  historyLock = true;
+  render();
+  historyLock = false;
+}
+function undo(){
+  if(undoStack.length < 2) return;
+  redoStack.push(undoStack.pop());
+  applySnapshot(undoStack[undoStack.length-1]);
+}
+function redo(){
+  if(!redoStack.length) return;
+  const snap = redoStack.pop();
+  undoStack.push(snap);
+  applySnapshot(snap);
+}
 
 function uid(){ return 'f_' + (idCounter++); }
 
@@ -176,7 +243,7 @@ function slug(str){
 }
 
 function defaultsFor(type){
-  const base = {id:uid(), type, label:'', name:'', placeholder:'', help:'', required:false, width:100, align:'left', options:[], value:''};
+  const base = {id:uid(), type, label:'', name:'', placeholder:'', help:'', required:false, width:100, align:'left', options:[], value:'', condition:null};
   switch(type){
     case 'text': base.label='Text field'; break;
     case 'email': base.label='Email'; base.placeholder='you@example.com'; break;
@@ -193,17 +260,19 @@ function defaultsFor(type){
     case 'file': base.label='Upload a file'; break;
     case 'hidden': base.name='hidden_field'; base.value='value'; break;
     case 'heading': base.label='Form section'; break;
+    case 'image': base.value=''; base.alt=''; base.imgWidth=100; base.radius=4; break;
     case 'html': base.value='Custom text between fields.'; break;
     case 'divider': break;
     case 'submit': base.value='Submit'; break;
     case 'reset': base.value='Reset'; break;
   }
-  if(type!=='hidden' && type!=='divider') base.name = slug(base.label || type);
+  if(type!=='hidden' && type!=='divider' && type!=='image') base.name = slug(base.label || type);
   return base;
 }
 
 /* ---------- Rendering ---------- */
 function render(){
+  pushHistory();
   const row = document.getElementById('fieldsRow');
   const hint = document.getElementById('dropHint');
   row.innerHTML = '';
@@ -214,7 +283,7 @@ function render(){
     el.className = 'field-block type-' + f.type + (f.width===50 ? ' w50':'') + (f.width===50 && f.align==='right' ? ' align-right':'') + (f.id===selectedId?' selected':'');
     el.dataset.id = f.id;
     el.draggable = true;
-    el.innerHTML = renderFieldInner(f);
+    el.innerHTML = conditionBadge(f) + renderFieldInner(f);
     el.addEventListener('click', (e)=>{ e.stopPropagation(); selectField(f.id); });
     el.addEventListener('dragstart', (e)=>{ e.dataTransfer.setData('text/reorder', f.id); e.stopPropagation(); });
     el.addEventListener('dragover', (e)=>{
@@ -253,6 +322,7 @@ function render(){
     toolbar.addEventListener('mousedown', e=>e.stopPropagation());
     toolbar.innerHTML = `
       ${f.type!=='heading'&&f.type!=='divider'&&f.type!=='html'&&f.type!=='submit'&&f.type!=='reset'?`<button title="Width 50%/100%" onclick="toggleWidth('${f.id}', event)" class="${f.width===50?'on':''}">◫</button>`:''}
+      <button title="Duplicate" onclick="duplicateField('${f.id}', event)">⧉</button>
       <button title="Up" onclick="moveField('${f.id}',-1, event)">↑</button>
       <button title="Down" onclick="moveField('${f.id}',1, event)">↓</button>
       <button title="Delete" onclick="deleteField('${f.id}', event)">✕</button>
@@ -301,6 +371,11 @@ function renderFieldInner(f){
         ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
     case 'html':
       return `<div class="htmlbox" contenteditable="true" onblur="updateValue('${f.id}',this.innerText)">${escapeHtml(f.value)}</div>`;
+    case 'image':
+      return f.value
+        ? `<img class="img-preview" src="${f.value}" alt="${escapeAttr(f.alt)}" style="width:${f.imgWidth}%;border-radius:${f.radius}px;">
+           ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`
+        : `<div class="img-slot" onclick="pickImage('${f.id}', event)">🖼 Click to upload an image</div>`;
     case 'divider':
       return `<hr>`;
     case 'submit':
@@ -316,6 +391,21 @@ function escapeAttr(s){ return escapeHtml(s); }
 
 function getField(id){ return fields.find(f=>f.id===id); }
 
+function conditionBadge(f){
+  if(!f.condition || !f.condition.fieldId) return '';
+  const trigger = getField(f.condition.fieldId);
+  if(!trigger) return '';
+  let valLabel = f.condition.value;
+  if(trigger.type==='select' || trigger.type==='radio'){
+    const opt = trigger.options.find(o=>slug(o.label)===f.condition.value);
+    valLabel = opt ? opt.label : f.condition.value;
+  } else if(f.condition.op==='checked' || f.condition.op==='unchecked'){
+    valLabel = f.condition.op==='checked' ? 'checked' : 'unchecked';
+  }
+  const verb = (f.condition.op==='checked'||f.condition.op==='unchecked') ? 'is' : '=';
+  return `<div class="cond-badge">Shown if "${escapeHtml(trigger.label||trigger.name)}" ${verb} ${escapeHtml(valLabel||'')}</div>`;
+}
+
 function updateLabel(id, text){
   const f = getField(id); if(!f) return;
   f.label = text.replace(/\*$/,'').trim();
@@ -329,6 +419,47 @@ function updateValue(id, text){
 
 function selectField(id){ selectedId = id; render(); }
 document.getElementById('canvasWrap').addEventListener('click', ()=>{ selectedId=null; render(); });
+
+function duplicateField(id, e){
+  if(e) e.stopPropagation();
+  const idx = fields.findIndex(f=>f.id===id);
+  const src = fields[idx];
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = uid();
+  copy.condition = null; // conditions reference other fields; don't blindly carry over
+  // ensure a unique name
+  let base = (src.name||'field').replace(/_\d+$/,'');
+  let n = 2;
+  while(fields.some(f=>f.name === base + '_' + n)) n++;
+  copy.name = base + '_' + n;
+  copy._nameManuallySet = true;
+  fields.splice(idx+1, 0, copy);
+  selectedId = copy.id;
+  render();
+}
+
+/* ---------- Image handling ---------- */
+function pickImage(id, e){
+  if(e) e.stopPropagation();
+  const inp = document.createElement('input');
+  inp.type = 'file';
+  inp.accept = 'image/*';
+  inp.onchange = ()=>{
+    const file = inp.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const f = getField(id);
+      if(!f) return;
+      f.value = reader.result;      // base64 data URL — keeps export self-contained
+      if(!f.alt) f.alt = file.name.replace(/\.[^.]+$/,'');
+      selectedId = id;
+      render();
+    };
+    reader.readAsDataURL(file);
+  };
+  inp.click();
+}
 
 function moveField(id, dir, e){
   if(e) e.stopPropagation();
@@ -357,10 +488,14 @@ document.querySelectorAll('.palette-item').forEach(item=>{
     e.dataTransfer.setData('text/type', item.dataset.type);
   });
 });
-document.getElementById('formShell').addEventListener('dragover', e=>e.preventDefault());
-document.getElementById('formShell').addEventListener('drop', e=>{
-  // fallback: dropped on empty area (not on a field) → append to end
-  if(e.target.id==='formShell' || e.target.id==='fieldsRow' || e.target.id==='dropHint'){
+document.addEventListener('dragover', e=>e.preventDefault());
+document.addEventListener('drop', e=>e.preventDefault());
+
+document.getElementById('canvasWrap').addEventListener('dragover', e=>e.preventDefault());
+document.getElementById('canvasWrap').addEventListener('drop', e=>{
+  e.preventDefault();
+  // fallback: dropped anywhere on the canvas that isn't a specific field block → append to end
+  if(!e.target.closest('.field-block')){
     const type = e.dataTransfer.getData('text/type');
     if(type){
       const nf = defaultsFor(type);
@@ -380,10 +515,10 @@ function renderPanel(){
     return;
   }
   let html = '';
-  const hasName = f.type!=='divider';
+  const hasName = !['divider','image'].includes(f.type);
   const hasPlaceholder = ['text','email','tel','number','password','textarea'].includes(f.type);
   const hasOptions = ['select','radio','checkboxgroup'].includes(f.type);
-  const hasRequired = !['heading','html','divider','submit','reset','hidden'].includes(f.type);
+  const hasRequired = !['heading','html','divider','submit','reset','hidden','image'].includes(f.type);
   const hasHelp = !['hidden','html','divider','submit','reset'].includes(f.type);
   const isTextLike = ['text','email','tel','password','textarea'].includes(f.type);
   const isNumber = f.type==='number';
@@ -399,6 +534,16 @@ function renderPanel(){
   }
   if(f.type==='hidden'){
     html += `<label class="f">Value (value)</label><input type="text" value="${escapeAttr(f.value)}" oninput="setProp('${f.id}','value',this.value)">`;
+  }
+  if(f.type==='image'){
+    html += `<button class="addopt" onclick="pickImage('${f.id}', event)" style="margin-bottom:4px;">${f.value?'⟳ Replace image':'＋ Upload image'}</button>`;
+    if(f.value){
+      html += `<label class="f">Alt text (accessibility)</label><input type="text" value="${escapeAttr(f.alt||'')}" oninput="setProp('${f.id}','alt',this.value)">
+        <label class="f">Image width: ${f.imgWidth}%</label>
+        <input type="range" min="10" max="100" step="5" value="${f.imgWidth}" style="width:100%" oninput="setProp('${f.id}','imgWidth',parseInt(this.value))">
+        <label class="f">Corner radius: ${f.radius}px</label>
+        <input type="range" min="0" max="32" step="1" value="${f.radius}" style="width:100%" oninput="setProp('${f.id}','radius',parseInt(this.value))">`;
+    }
   }
   if(hasRequired){
     html += `<div class="chk"><input type="checkbox" id="reqchk" ${f.required?'checked':''} onchange="setProp('${f.id}','required',this.checked)"><label for="reqchk" style="margin:0">Required field</label></div>`;
@@ -428,6 +573,36 @@ function renderPanel(){
   if(hasOptions){
     html += `<hr><label class="f">Answer options</label><div class="opt-editor" id="optEditor"></div>
       <button class="addopt" onclick="addOption('${f.id}')">+ add option</button>`;
+  }
+
+  if(f.type!=='hidden'){
+    const candidates = triggerCandidates(f.id);
+    html += `<hr><div class="chk"><input type="checkbox" id="condchk" ${f.condition?'checked':''} onchange="toggleCondition('${f.id}', this.checked)"><label for="condchk" style="margin:0">Show only if...</label></div>`;
+    if(f.condition){
+      if(!candidates.length){
+        html += `<div class="pempty" style="margin-top:6px;">No eligible fields yet — add a text/select/radio/checkbox field above this one.</div>`;
+      } else {
+        html += `<label class="f">When field</label><select onchange="setConditionField('${f.id}', this.value)">
+          <option value="">— choose —</option>
+          ${candidates.map(c=>`<option value="${c.id}" ${f.condition.fieldId===c.id?'selected':''}>${escapeHtml(c.label||c.name)}</option>`).join('')}
+        </select>`;
+        const trigger = getField(f.condition.fieldId);
+        if(trigger){
+          if(trigger.type==='checkbox'){
+            html += `<label class="f">Is</label><select onchange="setConditionValue('${f.id}', this.value)">
+              <option value="checked" ${f.condition.op==='checked'?'selected':''}>Checked</option>
+              <option value="unchecked" ${f.condition.op==='unchecked'?'selected':''}>Unchecked</option>
+            </select>`;
+          } else if(trigger.type==='select' || trigger.type==='radio'){
+            html += `<label class="f">Equals</label><select onchange="setConditionValue('${f.id}', this.value)">
+              ${trigger.options.map(o=>`<option value="${slug(o.label)}" ${f.condition.value===slug(o.label)?'selected':''}>${escapeHtml(o.label)}</option>`).join('')}
+            </select>`;
+          } else {
+            html += `<label class="f">Equals value</label><input type="text" value="${escapeAttr(f.condition.value||'')}" oninput="setConditionValue('${f.id}', this.value)">`;
+          }
+        }
+      }
+    }
   }
   body.innerHTML = html;
 
@@ -466,6 +641,35 @@ function syncCanvasFieldOnly(id){
   render();
 }
 
+/* ---------- Conditional logic (show if) ---------- */
+function triggerCandidates(excludeId){
+  return fields.filter(x => x.id!==excludeId && ['text','email','tel','number','password','textarea','select','radio','checkbox'].includes(x.type));
+}
+function toggleCondition(id, enabled){
+  const f = getField(id);
+  f.condition = enabled ? {fieldId:'', op:'eq', value:''} : null;
+  render();
+}
+function setConditionField(id, triggerId){
+  const f = getField(id);
+  const trigger = getField(triggerId);
+  f.condition.fieldId = triggerId;
+  if(trigger && trigger.type==='checkbox'){
+    f.condition.op = 'checked'; f.condition.value = '';
+  } else if(trigger && (trigger.type==='select' || trigger.type==='radio')){
+    f.condition.op = 'eq'; f.condition.value = trigger.options[0] ? slug(trigger.options[0].label) : '';
+  } else {
+    f.condition.op = 'eq'; f.condition.value = '';
+  }
+  render();
+}
+function setConditionValue(id, val){
+  const f = getField(id);
+  if(val==='checked' || val==='unchecked'){ f.condition.op = val; }
+  else { f.condition.value = val; }
+  render();
+}
+
 /* ---------- Save / Load ---------- */
 function saveProject(){
   const data = {
@@ -500,6 +704,14 @@ function loadProject(e){
 }
 
 /* ---------- Export clean HTML ---------- */
+function condAttrs(f){
+  if(!f.condition || !f.condition.fieldId) return '';
+  const trigger = fields.find(x=>x.id===f.condition.fieldId);
+  if(!trigger) return '';
+  const op = f.condition.op;
+  const val = (op==='checked'||op==='unchecked') ? '' : (f.condition.value||'');
+  return ` data-cond-field="${escapeAttr(trigger.name)}" data-cond-op="${op}" data-cond-value="${escapeAttr(val)}" style="display:none"`;
+}
 function fieldToHTML(f){
   const reqAttr = f.required ? ' required' : '';
   const v = f.validation||{};
@@ -514,19 +726,19 @@ function fieldToHTML(f){
 
   switch(f.type){
     case 'text': case 'email': case 'tel': case 'number': case 'password': case 'date': case 'time':
-      return `<div class="${wrapClass}">
+      return `<div class="${wrapClass}"${condAttrs(f)}>
       <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
       <input type="${f.type}" id="${id}" name="${f.name}" placeholder="${escapeAttr(f.placeholder)}"${reqAttr}${extra}>
       ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
     </div>`;
     case 'textarea':
-      return `<div class="${wrapClass}">
+      return `<div class="${wrapClass}"${condAttrs(f)}>
       <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
       <textarea id="${id}" name="${f.name}" placeholder="${escapeAttr(f.placeholder)}"${reqAttr}${extra}></textarea>
       ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
     </div>`;
     case 'select':
-      return `<div class="${wrapClass}">
+      return `<div class="${wrapClass}"${condAttrs(f)}>
       <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
       <select id="${id}" name="${f.name}"${reqAttr}>
         ${f.options.map(o=>`<option value="${slug(o.label)}">${escapeHtml(o.label)}</option>`).join('\n        ')}
@@ -534,24 +746,24 @@ function fieldToHTML(f){
       ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
     </div>`;
     case 'radio':
-      return `<div class="${wrapClass}">
+      return `<div class="${wrapClass}"${condAttrs(f)}>
       <div class="group-label">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</div>
       ${f.options.map((o,i)=>`<label class="opt"><input type="radio" name="${f.name}" value="${slug(o.label)}"${i===0?reqAttr:''}> ${escapeHtml(o.label)}</label>`).join('\n      ')}
       ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
     </div>`;
     case 'checkboxgroup':
-      return `<div class="${wrapClass}">
+      return `<div class="${wrapClass}"${condAttrs(f)}>
       <div class="group-label">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</div>
       ${f.options.map(o=>`<label class="opt"><input type="checkbox" name="${f.name}[]" value="${slug(o.label)}"> ${escapeHtml(o.label)}</label>`).join('\n      ')}
       ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
     </div>`;
     case 'checkbox':
-      return `<div class="${wrapClass}">
+      return `<div class="${wrapClass}"${condAttrs(f)}>
       <label class="opt"><input type="checkbox" name="${f.name}" value="1"${reqAttr}> ${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
       ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
     </div>`;
     case 'file':
-      return `<div class="${wrapClass}">
+      return `<div class="${wrapClass}"${condAttrs(f)}>
       <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
       <input type="file" id="${id}" name="${f.name}"${reqAttr}>
       ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
@@ -559,20 +771,27 @@ function fieldToHTML(f){
     case 'hidden':
       return `<input type="hidden" name="${f.name}" value="${escapeAttr(f.value)}">`;
     case 'heading':
-      return `<div class="section-heading"><h3>${escapeHtml(f.label)}</h3>${f.help?`<p class="help">${escapeHtml(f.help)}</p>`:''}</div>`;
+      return `<div class="section-heading"${condAttrs(f)}><h3>${escapeHtml(f.label)}</h3>${f.help?`<p class="help">${escapeHtml(f.help)}</p>`:''}</div>`;
     case 'html':
-      return `<div class="html-block">${escapeHtml(f.value)}</div>`;
+      return `<div class="html-block"${condAttrs(f)}>${escapeHtml(f.value)}</div>`;
+    case 'image':
+      return f.value
+        ? `<div class="${wrapClass}"${condAttrs(f)}>
+      <img src="${f.value}" alt="${escapeAttr(f.alt||'')}" class="form-img" style="width:${f.imgWidth}%;border-radius:${f.radius}px;">
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`
+        : '';
     case 'divider':
-      return `<hr class="divider">`;
+      return `<hr class="divider"${condAttrs(f)}>`;
     case 'submit':
-      return `<div class="${wrapClass}"><button type="submit" class="submit-btn">${escapeHtml(f.value)}</button></div>`;
+      return `<div class="${wrapClass}"${condAttrs(f)}><button type="submit" class="submit-btn">${escapeHtml(f.value)}</button></div>`;
     case 'reset':
-      return `<div class="${wrapClass}"><button type="reset" class="submit-btn reset-btn">${escapeHtml(f.value)}</button></div>`;
+      return `<div class="${wrapClass}"${condAttrs(f)}><button type="reset" class="submit-btn reset-btn">${escapeHtml(f.value)}</button></div>`;
     default: return '';
   }
 }
 
-function exportHTML(){
+function buildFormHTML(){
   const title = document.getElementById('formTitle').innerText;
   const desc = document.getElementById('formDesc').innerText;
   const bodyFields = fields.map(fieldToHTML).join('\n\n    ');
@@ -609,6 +828,7 @@ function exportHTML(){
   .section-heading h3{font-size:17px;border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin:26px 0 14px;}
   .section-heading:first-child h3{margin-top:0;}
   .html-block{font-size:14px;color:#444;margin:10px 0;}
+  .form-img{display:block;max-width:100%;height:auto;}
   .divider{border:none;border-top:1px solid #e2e2e2;margin:20px 0;}
   .submit-btn{width:100%;background:var(--accent);color:#fff;border:none;padding:12px 26px;border-radius:4px;font-size:15px;font-weight:600;cursor:pointer;}
   .submit-btn:hover{opacity:.9;}
@@ -626,15 +846,79 @@ function exportHTML(){
       </div>
     </form>
   </div>
+<script>
+(function(){
+  function evalConditions(){
+    document.querySelectorAll('[data-cond-field]').forEach(function(el){
+      var name = el.getAttribute('data-cond-field');
+      var op = el.getAttribute('data-cond-op');
+      var val = el.getAttribute('data-cond-value');
+      var els = document.getElementsByName(name);
+      var show = false;
+      if(op==='checked' || op==='unchecked'){
+        var checked = els[0] && els[0].checked;
+        show = op==='checked' ? checked : !checked;
+      } else {
+        var current = '';
+        if(els.length){
+          if(els[0].type==='radio'){
+            for(var i=0;i<els.length;i++){ if(els[i].checked){ current = els[i].value; break; } }
+          } else {
+            current = els[0].value;
+          }
+        }
+        show = op==='eq' ? (current===val) : (current!==val);
+      }
+      el.style.display = show ? '' : 'none';
+      el.querySelectorAll('input,select,textarea').forEach(function(inp){ inp.disabled = !show; });
+    });
+  }
+  document.addEventListener('input', evalConditions);
+  document.addEventListener('change', evalConditions);
+  evalConditions();
+})();
+<\/script>
 </body>
 </html>`;
 
-  const blob = new Blob([html], {type:'text/html'});
+  return html;
+}
+
+function exportHTML(){
+  const blob = new Blob([buildFormHTML()], {type:'text/html'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = 'form.html';
   a.click();
 }
+
+/* ---------- Preview ---------- */
+function openPreview(){
+  const frame = document.getElementById('previewFrame');
+  document.getElementById('previewOverlay').classList.add('open');
+  frame.srcdoc = buildFormHTML();
+}
+function closePreview(){
+  document.getElementById('previewOverlay').classList.remove('open');
+  document.getElementById('previewFrame').srcdoc = '';
+}
+document.addEventListener('keydown', e=>{
+  if(e.code==='Escape' && document.getElementById('previewOverlay').classList.contains('open')){
+    closePreview();
+  }
+});
+
+/* Undo / Redo hotkeys — event.code so non-Latin layouts work */
+document.addEventListener('keydown', e=>{
+  if(!(e.ctrlKey || e.metaKey)) return;
+  if(e.code==='KeyZ' && !e.shiftKey){ e.preventDefault(); undo(); }
+  else if(e.code==='KeyY' || (e.code==='KeyZ' && e.shiftKey)){ e.preventDefault(); redo(); }
+});
+
+/* Form title/description edits also go into history */
+['formTitle','formDesc'].forEach(id=>{
+  document.getElementById(id).addEventListener('blur', ()=>pushHistory());
+});
 
 render();
 </script>
