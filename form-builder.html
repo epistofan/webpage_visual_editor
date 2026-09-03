@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Form Builder</title>
+<style>
+  :root{
+    --ink:#1B1F3B;
+    --paper:#F7F5F0;
+    --blue:#2B3A67;
+    --amber:#E8B23D;
+    --line: rgba(27,31,59,0.18);
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;font-family:var(--sans);background:var(--ink);color:var(--ink);}
+
+  /* ---------- Shell ---------- */
+  #app{display:grid;grid-template-columns:250px 1fr 320px;grid-template-rows:56px 1fr;height:100vh;}
+  #topbar{grid-column:1/4;background:var(--ink);color:var(--paper);display:flex;align-items:center;justify-content:space-between;padding:0 18px;border-bottom:2px solid var(--amber);}
+  #topbar h1{font-size:14px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;margin:0;font-weight:600;}
+  #topbar h1 span{color:var(--amber);}
+  #topbar .actions{display:flex;gap:8px;}
+  #topbar button{background:transparent;border:1px solid rgba(247,245,240,0.35);color:var(--paper);font-family:var(--mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:8px 14px;cursor:pointer;transition:.15s;}
+  #topbar button:hover{background:var(--amber);border-color:var(--amber);color:var(--ink);}
+  #topbar button.primary{background:var(--amber);border-color:var(--amber);color:var(--ink);font-weight:700;}
+  #topbar button.primary:hover{background:var(--paper);border-color:var(--paper);}
+  #fileInput{display:none;}
+
+  /* ---------- Sidebar palette ---------- */
+  #sidebar{background:var(--blue);overflow-y:auto;padding:16px 12px 40px;border-right:2px solid var(--ink);}
+  #sidebar .grp-title{font-family:var(--mono);font-size:10px;color:rgba(247,245,240,0.55);text-transform:uppercase;letter-spacing:.08em;margin:18px 0 8px;}
+  #sidebar .grp-title:first-child{margin-top:2px;}
+  .palette-item{display:flex;align-items:center;gap:8px;background:rgba(247,245,240,0.08);border:1px solid rgba(247,245,240,0.18);color:var(--paper);padding:9px 10px;margin-bottom:6px;font-size:12.5px;cursor:grab;border-radius:3px;transition:.12s;}
+  .palette-item:hover{background:var(--amber);color:var(--ink);border-color:var(--amber);}
+  .palette-item .ic{font-size:14px;width:18px;text-align:center;}
+  .palette-item:active{cursor:grabbing;}
+
+  /* ---------- Canvas ---------- */
+  #canvasWrap{overflow-y:auto;background:#DAD6CC;padding:40px 24px;}
+  #formShell{max-width:640px;margin:0 auto;background:var(--paper);padding:36px 40px;box-shadow:0 8px 30px rgba(0,0,0,.18);min-height:400px;}
+  #formTitle{font-size:24px;font-weight:700;outline:none;border-bottom:2px dashed transparent;}
+  #formTitle:hover, #formTitle:focus{border-bottom-color:var(--amber);}
+  #formDesc{font-size:14px;color:#555;margin-top:6px;outline:none;border-bottom:2px dashed transparent;min-height:18px;}
+  #formDesc:hover, #formDesc:focus{border-bottom-color:var(--amber);}
+  #fieldsRow{display:flex;flex-wrap:wrap;gap:16px;margin-top:26px;}
+  #dropHint{text-align:center;color:#999;font-family:var(--mono);font-size:12px;padding:30px 10px;border:2px dashed #ccc;text-transform:uppercase;letter-spacing:.05em;}
+
+  .field-block{position:relative;flex:1 1 100%;border:1px solid transparent;padding:10px 10px 12px;border-radius:4px;transition:.12s;}
+  .field-block.w50{flex:1 1 calc(50% - 8px);}
+  .field-block.w50.align-right{margin-left:auto;}
+  .field-block:hover, .field-block.selected{border-color:var(--amber);background:rgba(232,178,61,0.06);}
+  .field-block .lbl{font-size:13px;font-weight:600;display:block;margin-bottom:5px;outline:none;}
+  .field-block .lbl:focus{background:rgba(232,178,61,0.15);}
+  .field-block .req-star{color:#c0392b;margin-left:2px;}
+  .field-block input[type=text], .field-block input[type=email], .field-block input[type=tel],
+  .field-block input[type=number], .field-block input[type=password], .field-block input[type=date],
+  .field-block input[type=time], .field-block textarea, .field-block select{
+    width:100%;padding:9px 10px;border:1px solid #ccc;border-radius:3px;font-family:var(--sans);font-size:13.5px;background:#fff;pointer-events:none;
+  }
+  .field-block textarea{min-height:70px;resize:none;}
+  .field-block .help{font-size:11.5px;color:#888;margin-top:4px;}
+  .field-block .opt-row{font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+  .field-block .opt-row input{pointer-events:none;}
+  .field-block.type-heading .lbl{font-size:17px;border-bottom:1px solid var(--line);padding-bottom:6px;}
+  .field-block.type-divider hr{border:none;border-top:1px solid var(--line);margin:6px 0;}
+  .field-block.type-submit .submit-preview-btn, .field-block.type-reset .submit-preview-btn{width:100%;background:var(--blue);color:#fff;border:none;padding:11px 22px;border-radius:3px;font-size:14px;font-weight:600;pointer-events:none;}
+  .field-block.type-reset .reset-preview-btn{background:transparent;color:var(--blue);border:1px solid var(--blue);}
+  .field-block.type-html .htmlbox{font-size:13px;color:#444;outline:none;min-height:20px;border:1px dashed #ccc;padding:6px;}
+  .field-block.type-html .htmlbox:focus{border-color:var(--amber);}
+
+  .fb-toolbar{position:absolute;top:-14px;right:6px;display:none;gap:3px;background:var(--ink);border-radius:3px;padding:3px;box-shadow:0 2px 8px rgba(0,0,0,.25);z-index:20;}
+  .field-block:hover .fb-toolbar, .field-block.selected .fb-toolbar{display:flex;}
+  .fb-toolbar button{background:none;border:none;color:var(--paper);font-size:12px;padding:4px 6px;cursor:pointer;border-radius:2px;}
+  .fb-toolbar button:hover{background:var(--amber);color:var(--ink);}
+  .fb-toolbar button.on{color:var(--amber);}
+
+  .field-block.drag-over-top::before, .field-block.drag-over-bottom::after{
+    content:"";position:absolute;left:0;right:0;height:3px;background:var(--amber);
+  }
+  .field-block.drag-over-top::before{top:-2px;}
+  .field-block.drag-over-bottom::after{bottom:-2px;}
+
+  /* ---------- Settings panel ---------- */
+  #panel{background:var(--blue);color:var(--paper);overflow-y:auto;padding:18px 16px 60px;border-left:2px solid var(--ink);}
+  #panel .ptitle{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--amber);margin-bottom:14px;}
+  #panel .pempty{font-size:12.5px;color:rgba(247,245,240,0.5);line-height:1.5;}
+  #panel label.f{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:rgba(247,245,240,0.6);margin:14px 0 5px;}
+  #panel label.f:first-of-type{margin-top:0;}
+  #panel input[type=text], #panel input[type=number], #panel textarea, #panel select{
+    width:100%;padding:7px 9px;border:1px solid rgba(247,245,240,0.3);background:rgba(247,245,240,0.08);color:var(--paper);border-radius:3px;font-size:12.5px;font-family:var(--sans);
+  }
+  #panel textarea{min-height:50px;resize:vertical;}
+  #panel .row2{display:flex;gap:8px;}
+  #panel .row2 > div{flex:1;}
+  #panel .chk{display:flex;align-items:center;gap:7px;font-size:12.5px;margin:10px 0;}
+  #panel .opt-editor .opt-line{display:flex;gap:5px;margin-bottom:5px;}
+  #panel .opt-editor input{flex:1;}
+  #panel .opt-editor button{background:rgba(192,57,43,0.3);border:none;color:var(--paper);padding:0 8px;border-radius:3px;cursor:pointer;font-size:12px;}
+  #panel .addopt{margin-top:4px;background:rgba(232,178,61,0.2);border:1px dashed var(--amber);color:var(--amber);padding:5px 10px;font-size:11.5px;cursor:pointer;width:100%;border-radius:3px;}
+  #panel .addopt:hover{background:var(--amber);color:var(--ink);}
+  #panel hr{border:none;border-top:1px solid rgba(247,245,240,0.15);margin:16px 0;}
+
+  @media (max-width:900px){
+    #app{grid-template-columns:0 1fr 0;}
+    #sidebar,#panel{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <h1>Form<span>Builder</span></h1>
+    <div class="actions">
+      <button onclick="document.getElementById('fileInput').click()">Load</button>
+      <input type="file" id="fileInput" accept=".json" onchange="loadProject(event)">
+      <button onclick="saveProject()">Save</button>
+      <button class="primary" onclick="exportHTML()">Export HTML</button>
+    </div>
+  </div>
+
+  <div id="sidebar">
+    <div class="grp-title">Text fields</div>
+    <div class="palette-item" draggable="true" data-type="text"><span class="ic">✎</span>Single-line text</div>
+    <div class="palette-item" draggable="true" data-type="email"><span class="ic">@</span>Email</div>
+    <div class="palette-item" draggable="true" data-type="tel"><span class="ic">☎</span>Phone</div>
+    <div class="palette-item" draggable="true" data-type="number"><span class="ic">#</span>Number</div>
+    <div class="palette-item" draggable="true" data-type="password"><span class="ic">•</span>Password</div>
+    <div class="palette-item" draggable="true" data-type="textarea"><span class="ic">≡</span>Multi-line text</div>
+
+    <div class="grp-title">Choice</div>
+    <div class="palette-item" draggable="true" data-type="select"><span class="ic">▾</span>Dropdown</div>
+    <div class="palette-item" draggable="true" data-type="radio"><span class="ic">◉</span>Radio buttons</div>
+    <div class="palette-item" draggable="true" data-type="checkbox"><span class="ic">☑</span>Single checkbox</div>
+    <div class="palette-item" draggable="true" data-type="checkboxgroup"><span class="ic">☑</span>Checkbox group</div>
+    <div class="palette-item" draggable="true" data-type="date"><span class="ic">📅</span>Date</div>
+    <div class="palette-item" draggable="true" data-type="time"><span class="ic">🕒</span>Time</div>
+
+    <div class="grp-title">Special &amp; layout</div>
+    <div class="palette-item" draggable="true" data-type="file"><span class="ic">📎</span>File</div>
+    <div class="palette-item" draggable="true" data-type="hidden"><span class="ic">⬚</span>Hidden field</div>
+    <div class="palette-item" draggable="true" data-type="heading"><span class="ic">H</span>Section heading</div>
+    <div class="palette-item" draggable="true" data-type="html"><span class="ic">▤</span>Text / HTML</div>
+    <div class="palette-item" draggable="true" data-type="divider"><span class="ic">―</span>Divider</div>
+    <div class="palette-item" draggable="true" data-type="submit"><span class="ic">➤</span>Submit button</div>
+    <div class="palette-item" draggable="true" data-type="reset"><span class="ic">↺</span>Reset button</div>
+  </div>
+
+  <div id="canvasWrap">
+    <div id="formShell">
+      <div id="formTitle" contenteditable="true">Form title</div>
+      <div id="formDesc" contenteditable="true">Short form description (optional)</div>
+      <div id="fieldsRow"></div>
+      <div id="dropHint">Drag a field here from the panel on the left</div>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="ptitle">Field settings</div>
+    <div id="panelBody"><div class="pempty">Select a field on the form to configure its label, name, required state, options, and validation.</div></div>
+  </div>
+</div>
+
+<script>
+let fields = [];
+let idCounter = 1;
+let selectedId = null;
+
+function uid(){ return 'f_' + (idCounter++); }
+
+function slug(str){
+  return (str||'').toLowerCase()
+    .replace(/[^a-z0-9\s_-]/gi,'')
+    .trim().replace(/\s+/g,'_').slice(0,40) || 'field';
+}
+
+function defaultsFor(type){
+  const base = {id:uid(), type, label:'', name:'', placeholder:'', help:'', required:false, width:100, align:'left', options:[], value:''};
+  switch(type){
+    case 'text': base.label='Text field'; break;
+    case 'email': base.label='Email'; base.placeholder='you@example.com'; break;
+    case 'tel': base.label='Phone'; base.placeholder='+371 20000000'; break;
+    case 'number': base.label='Number'; break;
+    case 'password': base.label='Password'; break;
+    case 'textarea': base.label='Message'; break;
+    case 'select': base.label='Select an option'; base.options=[{label:'Option 1'},{label:'Option 2'}]; break;
+    case 'radio': base.label='Choose one option'; base.options=[{label:'Option 1'},{label:'Option 2'}]; break;
+    case 'checkbox': base.label='I agree to the terms'; break;
+    case 'checkboxgroup': base.label='Select options'; base.options=[{label:'Option 1'},{label:'Option 2'}]; break;
+    case 'date': base.label='Date'; break;
+    case 'time': base.label='Time'; break;
+    case 'file': base.label='Upload a file'; break;
+    case 'hidden': base.name='hidden_field'; base.value='value'; break;
+    case 'heading': base.label='Form section'; break;
+    case 'html': base.value='Custom text between fields.'; break;
+    case 'divider': break;
+    case 'submit': base.value='Submit'; break;
+    case 'reset': base.value='Reset'; break;
+  }
+  if(type!=='hidden' && type!=='divider') base.name = slug(base.label || type);
+  return base;
+}
+
+/* ---------- Rendering ---------- */
+function render(){
+  const row = document.getElementById('fieldsRow');
+  const hint = document.getElementById('dropHint');
+  row.innerHTML = '';
+  hint.style.display = fields.length ? 'none' : 'block';
+
+  fields.forEach(f => {
+    const el = document.createElement('div');
+    el.className = 'field-block type-' + f.type + (f.width===50 ? ' w50':'') + (f.width===50 && f.align==='right' ? ' align-right':'') + (f.id===selectedId?' selected':'');
+    el.dataset.id = f.id;
+    el.draggable = true;
+    el.innerHTML = renderFieldInner(f);
+    el.addEventListener('click', (e)=>{ e.stopPropagation(); selectField(f.id); });
+    el.addEventListener('dragstart', (e)=>{ e.dataTransfer.setData('text/reorder', f.id); e.stopPropagation(); });
+    el.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      el.classList.toggle('drag-over-top', before);
+      el.classList.toggle('drag-over-bottom', !before);
+    });
+    el.addEventListener('dragleave', ()=>{ el.classList.remove('drag-over-top','drag-over-bottom'); });
+    el.addEventListener('drop', (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      el.classList.remove('drag-over-top','drag-over-bottom');
+      const type = e.dataTransfer.getData('text/type');
+      const reorderId = e.dataTransfer.getData('text/reorder');
+      const rect = el.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      const targetIdx = fields.findIndex(x=>x.id===f.id);
+      if(type){
+        const nf = defaultsFor(type);
+        fields.splice(before?targetIdx:targetIdx+1, 0, nf);
+        selectedId = nf.id;
+      } else if(reorderId && reorderId !== f.id){
+        const fromIdx = fields.findIndex(x=>x.id===reorderId);
+        const [moved] = fields.splice(fromIdx,1);
+        const newIdx = fields.findIndex(x=>x.id===f.id);
+        fields.splice(before?newIdx:newIdx+1, 0, moved);
+      }
+      render();
+    });
+
+    const idx = fields.indexOf(f);
+    const toolbar = document.createElement('div');
+    toolbar.className = 'fb-toolbar';
+    toolbar.draggable = false;
+    toolbar.addEventListener('mousedown', e=>e.stopPropagation());
+    toolbar.innerHTML = `
+      ${f.type!=='heading'&&f.type!=='divider'&&f.type!=='html'&&f.type!=='submit'&&f.type!=='reset'?`<button title="Width 50%/100%" onclick="toggleWidth('${f.id}', event)" class="${f.width===50?'on':''}">◫</button>`:''}
+      <button title="Up" onclick="moveField('${f.id}',-1, event)">↑</button>
+      <button title="Down" onclick="moveField('${f.id}',1, event)">↓</button>
+      <button title="Delete" onclick="deleteField('${f.id}', event)">✕</button>
+    `;
+    el.appendChild(toolbar);
+    row.appendChild(el);
+  });
+
+  renderPanel();
+}
+
+function renderFieldInner(f){
+  const reqStar = f.required ? '<span class="req-star">*</span>' : '';
+  switch(f.type){
+    case 'text': case 'email': case 'tel': case 'number': case 'password': case 'date': case 'time':
+      return `<label class="lbl" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}${reqStar}</label>
+        <input type="${f.type}" placeholder="${escapeAttr(f.placeholder)}" disabled>
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'textarea':
+      return `<label class="lbl" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}${reqStar}</label>
+        <textarea placeholder="${escapeAttr(f.placeholder)}" disabled></textarea>
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'select':
+      return `<label class="lbl" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}${reqStar}</label>
+        <select disabled>${f.options.map(o=>`<option>${escapeHtml(o.label)}</option>`).join('')}</select>
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'radio':
+      return `<label class="lbl" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}${reqStar}</label>
+        ${f.options.map((o,i)=>`<div class="opt-row"><input type="radio" disabled>${escapeHtml(o.label)}</div>`).join('')}
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'checkboxgroup':
+      return `<label class="lbl" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}${reqStar}</label>
+        ${f.options.map((o,i)=>`<div class="opt-row"><input type="checkbox" disabled>${escapeHtml(o.label)}</div>`).join('')}
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'checkbox':
+      return `<div class="opt-row"><input type="checkbox" disabled><span class="lbl" style="display:inline;margin:0" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}${reqStar}</span></div>
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'file':
+      return `<label class="lbl" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}${reqStar}</label>
+        <input type="file" disabled>
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'hidden':
+      return `<div style="font-size:11.5px;color:#888;font-family:var(--mono)">⬚ hidden field: name="${escapeHtml(f.name)}" value="${escapeHtml(f.value)}"</div>`;
+    case 'heading':
+      return `<label class="lbl" contenteditable="true" onblur="updateLabel('${f.id}',this.innerText)">${f.label}</label>
+        ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}`;
+    case 'html':
+      return `<div class="htmlbox" contenteditable="true" onblur="updateValue('${f.id}',this.innerText)">${escapeHtml(f.value)}</div>`;
+    case 'divider':
+      return `<hr>`;
+    case 'submit':
+      return `<button class="submit-preview-btn" contenteditable="true" onblur="updateValue('${f.id}',this.innerText)">${escapeHtml(f.value)}</button>`;
+    case 'reset':
+      return `<button class="submit-preview-btn reset-preview-btn" contenteditable="true" onblur="updateValue('${f.id}',this.innerText)">${escapeHtml(f.value)}</button>`;
+    default: return '';
+  }
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+function getField(id){ return fields.find(f=>f.id===id); }
+
+function updateLabel(id, text){
+  const f = getField(id); if(!f) return;
+  f.label = text.replace(/\*$/,'').trim();
+  if(!f._nameManuallySet) f.name = slug(f.label);
+  renderPanel();
+}
+function updateValue(id, text){
+  const f = getField(id); if(!f) return;
+  f.value = text;
+}
+
+function selectField(id){ selectedId = id; render(); }
+document.getElementById('canvasWrap').addEventListener('click', ()=>{ selectedId=null; render(); });
+
+function moveField(id, dir, e){
+  if(e) e.stopPropagation();
+  const idx = fields.findIndex(f=>f.id===id);
+  const newIdx = idx+dir;
+  if(newIdx<0 || newIdx>=fields.length) return;
+  [fields[idx], fields[newIdx]] = [fields[newIdx], fields[idx]];
+  render();
+}
+function deleteField(id, e){
+  if(e) e.stopPropagation();
+  fields = fields.filter(f=>f.id!==id);
+  if(selectedId===id) selectedId=null;
+  render();
+}
+function toggleWidth(id, e){
+  if(e) e.stopPropagation();
+  const f = getField(id);
+  f.width = f.width===50 ? 100 : 50;
+  render();
+}
+
+/* ---------- Palette drag ---------- */
+document.querySelectorAll('.palette-item').forEach(item=>{
+  item.addEventListener('dragstart', e=>{
+    e.dataTransfer.setData('text/type', item.dataset.type);
+  });
+});
+document.getElementById('formShell').addEventListener('dragover', e=>e.preventDefault());
+document.getElementById('formShell').addEventListener('drop', e=>{
+  // fallback: dropped on empty area (not on a field) → append to end
+  if(e.target.id==='formShell' || e.target.id==='fieldsRow' || e.target.id==='dropHint'){
+    const type = e.dataTransfer.getData('text/type');
+    if(type){
+      const nf = defaultsFor(type);
+      fields.push(nf);
+      selectedId = nf.id;
+      render();
+    }
+  }
+});
+
+/* ---------- Settings panel ---------- */
+function renderPanel(){
+  const body = document.getElementById('panelBody');
+  const f = getField(selectedId);
+  if(!f){
+    body.innerHTML = '<div class="pempty">Select a field on the form to configure its label, name, required state, options, and validation.</div>';
+    return;
+  }
+  let html = '';
+  const hasName = f.type!=='divider';
+  const hasPlaceholder = ['text','email','tel','number','password','textarea'].includes(f.type);
+  const hasOptions = ['select','radio','checkboxgroup'].includes(f.type);
+  const hasRequired = !['heading','html','divider','submit','reset','hidden'].includes(f.type);
+  const hasHelp = !['hidden','html','divider','submit','reset'].includes(f.type);
+  const isTextLike = ['text','email','tel','password','textarea'].includes(f.type);
+  const isNumber = f.type==='number';
+
+  if(hasName){
+    html += `<label class="f">Field name (name)</label><input type="text" value="${escapeAttr(f.name)}" oninput="setName('${f.id}',this.value)">`;
+  }
+  if(hasPlaceholder){
+    html += `<label class="f">Placeholder</label><input type="text" value="${escapeAttr(f.placeholder)}" oninput="setProp('${f.id}','placeholder',this.value)">`;
+  }
+  if(hasHelp){
+    html += `<label class="f">Help text below field</label><input type="text" value="${escapeAttr(f.help)}" oninput="setProp('${f.id}','help',this.value)">`;
+  }
+  if(f.type==='hidden'){
+    html += `<label class="f">Value (value)</label><input type="text" value="${escapeAttr(f.value)}" oninput="setProp('${f.id}','value',this.value)">`;
+  }
+  if(hasRequired){
+    html += `<div class="chk"><input type="checkbox" id="reqchk" ${f.required?'checked':''} onchange="setProp('${f.id}','required',this.checked)"><label for="reqchk" style="margin:0">Required field</label></div>`;
+  }
+  if(f.type==='submit' || f.type==='reset'){
+    html += `<div class="chk"><input type="checkbox" id="fullwidthchk" ${f.width===100?'checked':''} onchange="setProp('${f.id}','width',this.checked?100:50)"><label for="fullwidthchk" style="margin:0">Full width button</label></div>`;
+  }
+  if(f.width===50){
+    html += `<label class="f">Position in row</label><select onchange="setProp('${f.id}','align',this.value)">
+      <option value="left" ${f.align!=='right'?'selected':''}>Left half</option>
+      <option value="right" ${f.align==='right'?'selected':''}>Right half</option>
+    </select>`;
+  }
+  if(isTextLike){
+    html += `<hr><label class="f">Validation</label><div class="row2">
+      <div><label class="f" style="margin-top:0">Min length</label><input type="number" value="${f.validation?.minlength??''}" oninput="setValidation('${f.id}','minlength',this.value)"></div>
+      <div><label class="f" style="margin-top:0">Max length</label><input type="number" value="${f.validation?.maxlength??''}" oninput="setValidation('${f.id}','maxlength',this.value)"></div>
+    </div>
+    <label class="f">Regex (pattern)</label><input type="text" value="${escapeAttr(f.validation?.pattern||'')}" oninput="setValidation('${f.id}','pattern',this.value)">`;
+  }
+  if(isNumber){
+    html += `<hr><label class="f">Validation</label><div class="row2">
+      <div><label class="f" style="margin-top:0">Min</label><input type="number" value="${f.validation?.min??''}" oninput="setValidation('${f.id}','min',this.value)"></div>
+      <div><label class="f" style="margin-top:0">Max</label><input type="number" value="${f.validation?.max??''}" oninput="setValidation('${f.id}','max',this.value)"></div>
+    </div>`;
+  }
+  if(hasOptions){
+    html += `<hr><label class="f">Answer options</label><div class="opt-editor" id="optEditor"></div>
+      <button class="addopt" onclick="addOption('${f.id}')">+ add option</button>`;
+  }
+  body.innerHTML = html;
+
+  if(hasOptions){
+    const oe = document.getElementById('optEditor');
+    f.options.forEach((o,i)=>{
+      const line = document.createElement('div');
+      line.className = 'opt-line';
+      line.innerHTML = `<input type="text" value="${escapeAttr(o.label)}"><button type="button" title="Delete">✕</button>`;
+      line.querySelector('input').addEventListener('input', e=>{ o.label = e.target.value; });
+      line.querySelector('input').addEventListener('blur', ()=>{ syncCanvasFieldOnly(f.id); });
+      line.querySelector('button').addEventListener('click', (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        f.options.splice(i,1);
+        render();
+      });
+      oe.appendChild(line);
+    });
+  }
+}
+
+function setName(id, val){ const f=getField(id); f.name = slug(val)||slug(f.label); f._nameManuallySet = true; }
+function setProp(id, key, val){ const f=getField(id); f[key]=val; if(key==='required') syncCanvasFieldOnly(id); render(); }
+function setValidation(id, key, val){
+  const f=getField(id); f.validation = f.validation||{};
+  if(val==='') delete f.validation[key]; else f.validation[key]=val;
+}
+function addOption(id){
+  const f=getField(id);
+  f.options.push({label:'New option'});
+  render();
+}
+function syncCanvasFieldOnly(id){
+  // lightweight re-render of just the label/options without losing panel focus entirely
+  render();
+}
+
+/* ---------- Save / Load ---------- */
+function saveProject(){
+  const data = {
+    title: document.getElementById('formTitle').innerText,
+    desc: document.getElementById('formDesc').innerText,
+    fields
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'form-project.json';
+  a.click();
+}
+function loadProject(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const data = JSON.parse(reader.result);
+      document.getElementById('formTitle').innerText = data.title||'Form title';
+      document.getElementById('formDesc').innerText = data.desc||'';
+      fields = data.fields||[];
+      let maxId = 0;
+      fields.forEach(f=>{ const n=parseInt((f.id||'').replace('f_','')); if(n>maxId) maxId=n; });
+      idCounter = maxId+1;
+      selectedId = null;
+      render();
+    }catch(err){ alert('Could not read the project file.'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ---------- Export clean HTML ---------- */
+function fieldToHTML(f){
+  const reqAttr = f.required ? ' required' : '';
+  const v = f.validation||{};
+  let extra = '';
+  if(v.minlength) extra += ` minlength="${v.minlength}"`;
+  if(v.maxlength) extra += ` maxlength="${v.maxlength}"`;
+  if(v.pattern) extra += ` pattern="${escapeAttr(v.pattern)}"`;
+  if(v.min!==undefined && v.min!=='') extra += ` min="${v.min}"`;
+  if(v.max!==undefined && v.max!=='') extra += ` max="${v.max}"`;
+  const wrapClass = 'field' + (f.width===50 ? ' half':'') + (f.width===50 && f.align==='right' ? ' align-right':'');
+  const id = 'field_' + f.name;
+
+  switch(f.type){
+    case 'text': case 'email': case 'tel': case 'number': case 'password': case 'date': case 'time':
+      return `<div class="${wrapClass}">
+      <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      <input type="${f.type}" id="${id}" name="${f.name}" placeholder="${escapeAttr(f.placeholder)}"${reqAttr}${extra}>
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`;
+    case 'textarea':
+      return `<div class="${wrapClass}">
+      <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      <textarea id="${id}" name="${f.name}" placeholder="${escapeAttr(f.placeholder)}"${reqAttr}${extra}></textarea>
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`;
+    case 'select':
+      return `<div class="${wrapClass}">
+      <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      <select id="${id}" name="${f.name}"${reqAttr}>
+        ${f.options.map(o=>`<option value="${slug(o.label)}">${escapeHtml(o.label)}</option>`).join('\n        ')}
+      </select>
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`;
+    case 'radio':
+      return `<div class="${wrapClass}">
+      <div class="group-label">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</div>
+      ${f.options.map((o,i)=>`<label class="opt"><input type="radio" name="${f.name}" value="${slug(o.label)}"${i===0?reqAttr:''}> ${escapeHtml(o.label)}</label>`).join('\n      ')}
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`;
+    case 'checkboxgroup':
+      return `<div class="${wrapClass}">
+      <div class="group-label">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</div>
+      ${f.options.map(o=>`<label class="opt"><input type="checkbox" name="${f.name}[]" value="${slug(o.label)}"> ${escapeHtml(o.label)}</label>`).join('\n      ')}
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`;
+    case 'checkbox':
+      return `<div class="${wrapClass}">
+      <label class="opt"><input type="checkbox" name="${f.name}" value="1"${reqAttr}> ${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`;
+    case 'file':
+      return `<div class="${wrapClass}">
+      <label for="${id}">${escapeHtml(f.label)}${f.required?' <span class="req">*</span>':''}</label>
+      <input type="file" id="${id}" name="${f.name}"${reqAttr}>
+      ${f.help?`<div class="help">${escapeHtml(f.help)}</div>`:''}
+    </div>`;
+    case 'hidden':
+      return `<input type="hidden" name="${f.name}" value="${escapeAttr(f.value)}">`;
+    case 'heading':
+      return `<div class="section-heading"><h3>${escapeHtml(f.label)}</h3>${f.help?`<p class="help">${escapeHtml(f.help)}</p>`:''}</div>`;
+    case 'html':
+      return `<div class="html-block">${escapeHtml(f.value)}</div>`;
+    case 'divider':
+      return `<hr class="divider">`;
+    case 'submit':
+      return `<div class="${wrapClass}"><button type="submit" class="submit-btn">${escapeHtml(f.value)}</button></div>`;
+    case 'reset':
+      return `<div class="${wrapClass}"><button type="reset" class="submit-btn reset-btn">${escapeHtml(f.value)}</button></div>`;
+    default: return '';
+  }
+}
+
+function exportHTML(){
+  const title = document.getElementById('formTitle').innerText;
+  const desc = document.getElementById('formDesc').innerText;
+  const bodyFields = fields.map(fieldToHTML).join('\n\n    ');
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${escapeHtml(title)}</title>
+<style>
+  :root{ --accent:#2B3A67; --ink:#1B1F3B; }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,'Segoe UI',sans-serif;background:#F4F2ED;margin:0;padding:40px 16px;color:var(--ink);}
+  .form-wrap{max-width:620px;margin:0 auto;background:#fff;padding:36px 32px;border-radius:6px;box-shadow:0 4px 24px rgba(0,0,0,.08);}
+  h1{font-size:24px;margin:0 0 6px;}
+  .form-desc{font-size:14px;color:#666;margin:0 0 24px;}
+  .row{display:flex;flex-wrap:wrap;gap:16px;}
+  .field{flex:1 1 100%;margin-bottom:16px;}
+  .field.half{flex:1 1 calc(50% - 8px);}
+  .field.half.align-right{margin-left:auto;}
+  label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;}
+  .req{color:#c0392b;}
+  input[type=text],input[type=email],input[type=tel],input[type=number],input[type=password],
+  input[type=date],input[type=time],textarea,select{
+    width:100%;padding:10px 11px;border:1px solid #ccc;border-radius:4px;font-size:14px;font-family:inherit;
+  }
+  textarea{min-height:90px;resize:vertical;}
+  input[type=file]{width:100%;font-size:13px;}
+  .help{font-size:12px;color:#888;margin-top:4px;}
+  .group-label{font-size:13px;font-weight:600;margin-bottom:6px;}
+  .opt{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400;margin-bottom:6px;}
+  .opt input{width:auto;}
+  .section-heading h3{font-size:17px;border-bottom:1px solid #e2e2e2;padding-bottom:8px;margin:26px 0 14px;}
+  .section-heading:first-child h3{margin-top:0;}
+  .html-block{font-size:14px;color:#444;margin:10px 0;}
+  .divider{border:none;border-top:1px solid #e2e2e2;margin:20px 0;}
+  .submit-btn{width:100%;background:var(--accent);color:#fff;border:none;padding:12px 26px;border-radius:4px;font-size:15px;font-weight:600;cursor:pointer;}
+  .submit-btn:hover{opacity:.9;}
+  .reset-btn{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+  @media (max-width:520px){ .field.half{flex:1 1 100%;} }
+</style>
+</head>
+<body>
+  <div class="form-wrap">
+    <h1>${escapeHtml(title)}</h1>
+    ${desc?`<p class="form-desc">${escapeHtml(desc)}</p>`:''}
+    <form action="#" method="POST">
+      <div class="row">
+    ${bodyFields}
+      </div>
+    </form>
+  </div>
+</body>
+</html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'form.html';
+  a.click();
+}
+
+render();
+</script>
+</body>
+</html>
